@@ -365,7 +365,7 @@ local function on_entity_renamed(event)
       end
       -- register in new table if it's already set up
       if global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name] and global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].entities then
-        global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].entities[entity.unit_number] = nil
+        global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].entities[entity.unit_number] = entity
       end
 
     else
