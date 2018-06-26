@@ -755,17 +755,6 @@ local function building_tick(event)
           force = train_config.builder_station.force,
         })
       end
-    elseif not train_config.template or not train_config.template.valid then
-      abort = true
-      if train_config.builder_station.valid then
-        train_config.builder_station.surface.create_entity({
-          name = "flying-text",
-          text = {"train-scaling.error-train-wrong-configuration"},
-          position = train_config.builder_station.position,
-          color = {r = 1, g = 0.45, b = 0, a = 0.8},
-          force = train_config.builder_station.force,
-        })
-      end
     else
       train = train_config.builder_loco.train
       -- bail if the station's gone
@@ -804,6 +793,16 @@ local function building_tick(event)
     end
     -- we're through the generic error checks, now branch based on what type of job is being done
     if train_config.type == "construction" then
+      if not train_config.template or not train_config.template.valid then
+        abort = true
+        train_config.builder_loco.surface.create_entity({
+          name = "flying-text",
+          text = {"train-scaling.error-train-wrong-configuration"},
+          position = train_config.builder_loco.position,
+          color = {r = 1, g = 0.45, b = 0, a = 0.8},
+          force = train_config.builder_loco.force,
+        })
+      end
       if not train_config.input_chest or not train_config.input_chest.valid then
         abort = true
         train_config.builder_loco.surface.create_entity({
