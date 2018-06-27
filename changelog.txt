@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.3
+Date: 26. 6. 2018
+  Bugfixes:
+    - Fix crash when building modded locomotives that don't take any fuel
+  Info:
+    - Update localized names to be consistent with base game
+---------------------------------------------------------------------------------------------------
 Version: 0.16.2
 Date: 26. 6. 2018
   Bugfixes:

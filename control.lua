@@ -872,25 +872,27 @@ local function building_tick(event)
             -- fuel
             if carriage_config.fuel then
               local fuel_inventory = wagon.get_inventory(defines.inventory.fuel)
-              local count = input_inventory.remove({
-                name = carriage_config.fuel,
-                count = game.item_prototypes[carriage_config.fuel].stack_size * (carriage_config.fuel_stacks or 1),
-              })
-              if count > 0 then
-                fuel_inventory.insert({
+              if fuel_inventory and fuel_inventory.valid and fuel_inventory.can_insert(carriage_config.fuel) then
+                local count = input_inventory.remove({
                   name = carriage_config.fuel,
-                  count = count,
+                  count = game.item_prototypes[carriage_config.fuel].stack_size * (carriage_config.fuel_stacks or 1),
                 })
-              else
-                abort = true
-                train_config.builder_loco.surface.create_entity({
-                  name = "flying-text",
-                  text = {"train-scaling.error-fuel-missing"},
-                  position = train_config.builder_loco.position,
-                  color = {r = 1, g = 0.45, b = 0, a = 0.8},
-                  force = train_config.builder_loco.force,
-                })
-                abort_build(train_config)
+                if count > 0 then
+                  fuel_inventory.insert({
+                    name = carriage_config.fuel,
+                    count = count,
+                  })
+                else
+                  abort = true
+                  train_config.builder_loco.surface.create_entity({
+                    name = "flying-text",
+                    text = {"train-scaling.error-fuel-missing"},
+                    position = train_config.builder_loco.position,
+                    color = {r = 1, g = 0.45, b = 0, a = 0.8},
+                    force = train_config.builder_loco.force,
+                  })
+                  abort_build(train_config)
+                end
               end
             end
 
