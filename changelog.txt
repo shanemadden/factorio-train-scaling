@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.4
+Date: 27. 6. 2018
+  Info:
+    - Raise script_raised_built (with created_entity just after creation) and script_raised_destroy (with entity just before destroy) events, to enable building trains for mods which need to track their carriage entities
+    - Set last_user on the requester and provider chest ghosts that are built in the input/output positions next to a scaling station
+---------------------------------------------------------------------------------------------------
 Version: 0.16.3
 Date: 26. 6. 2018
   Bugfixes:

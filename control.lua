@@ -286,7 +286,7 @@ local function on_built_entity(event)
         force = entity.force,
         build_check_type = defines.build_check_type.ghost_place,
       }) then
-        entity.surface.create_entity({
+        local requester = entity.surface.create_entity({
           name = "entity-ghost",
           inner_name = "logistic-chest-requester",
           position = {
@@ -295,6 +295,9 @@ local function on_built_entity(event)
           },
           force = entity.force,
         })
+        if requester and requester.valid then
+          requester.last_user = entity.last_user
+        end
       end
       if entity.surface.can_place_entity({
         name = "logistic-chest-active-provider",
@@ -305,7 +308,7 @@ local function on_built_entity(event)
         force = entity.force,
         build_check_type = defines.build_check_type.ghost_place,
       }) then
-        entity.surface.create_entity({
+        local provider = entity.surface.create_entity({
           name = "entity-ghost",
           inner_name = "logistic-chest-active-provider",
           position = {
@@ -314,6 +317,9 @@ local function on_built_entity(event)
           },
           force = entity.force,
         })
+        if provider and provider.valid then
+          provider.last_user = entity.last_user
+        end
       end
 
       global.scaling_stations[entity.surface.index][entity.force.name][entity.backer_name].entities[entity.unit_number] = entity
@@ -629,6 +635,8 @@ local function deconstruct_carriage_into_inventory(carriage, inventory)
       end
     end
   end
+  -- raise event for other mods tracking their carriages before destroying
+  script.raise_event(defines.events.script_raised_destroy, {entity = carriage})
   carriage.destroy()
   return true
 end
@@ -671,6 +679,8 @@ local function abort_remove_carriage(carriage_config, inventory)
       count = 1,
     })
   end
+  -- raise event for other mods tracking their carriages before destroying
+  script.raise_event(defines.events.script_raised_destroy, {entity = entity})
   entity.destroy()
 end
 
@@ -949,6 +959,8 @@ local function building_tick(event)
               -- nothing else to fail, mark the carriage as complete
               -- update progress watermark for timeout checks
               train_config.progress_tick = event.tick
+              -- notify other mods which might need to track when their train cars get built
+              script.raise_event(defines.events.script_raised_built, {created_entity = wagon})
               -- move to the next car
               train_config.cursor = train_config.cursor - 1
               if train_config.cursor == 0 then
