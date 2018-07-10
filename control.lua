@@ -96,7 +96,7 @@ local function carriage_eq(carriage_a, carriage_b)
       end
       for _, equipment in ipairs(carriage_b.grid.equipment) do
         local pos_str = string.format("%d,%d", equipment.position.x, equipment.position.y)
-        if not equip_locations[pos_str] or not equip_locations[pos_str] == equipment.name then
+        if not equip_locations[pos_str] or equip_locations[pos_str] ~= equipment.name then
           return false
         end
       end
@@ -340,7 +340,7 @@ local function on_entity_renamed(event)
       global.scaling_stations[entity.surface.index][entity.force.name][event.old_name].entities[entity.unit_number] = nil
 
       -- check if the old station name no longer has any associated stations
-      if not next(global.scaling_stations[entity.surface.index][entity.force.name][event.old_name].entities)then
+      if not next(global.scaling_stations[entity.surface.index][entity.force.name][event.old_name].entities) then
         -- delete its config if that was the last
         global.scaling_stations[entity.surface.index][entity.force.name][event.old_name] = nil
       end
@@ -1451,27 +1451,31 @@ end
 
 local function on_train_changed_state(event)
   if event.train.station and event.train.station.name == "train-scaling-stop" then
+    local station_entity = event.train.station
+    local scaling_config = global.scaling_stations[station_entity.surface.index][station_entity.force.name][station_entity.backer_name]
     -- a train stopped at a special station, let's see if we should deconstruct it
-    if event.train.station.backer_name == "__mt__" then
+    if station_entity.backer_name == "__mt__" then
       return
     end
-    if next(event.train.get_contents()) or next(event.train.get_fluid_contents()) then
-      event.train.station.surface.create_entity({
-        name = "flying-text",
-        text = {"train-scaling.error-cargo-not-empty"},
-        position = event.train.station.position,
-        color = {r = 1, g = 0.45, b = 0, a = 0.8},
-        force = event.train.station.force,
-      })
-      return
+    if not scaling_config.deconstruct_nonempty then
+      if next(event.train.get_contents()) or next(event.train.get_fluid_contents()) then
+        station_entity.surface.create_entity({
+          name = "flying-text",
+          text = {"train-scaling.error-cargo-not-empty"},
+          position = station_entity.position,
+          color = {r = 1, g = 0.45, b = 0, a = 0.8},
+          force = station_entity.force,
+        })
+        return
+      end
     end
     if #event.train.passengers > 0 then
-      event.train.station.surface.create_entity({
+      station_entity.surface.create_entity({
         name = "flying-text",
         text = {"train-scaling.error-train-occupied"},
-        position = event.train.station.position,
+        position = station_entity.position,
         color = {r = 1, g = 0.45, b = 0, a = 0.8},
-        force = event.train.station.force,
+        force = station_entity.force,
       })
       return
     end
@@ -1480,7 +1484,6 @@ local function on_train_changed_state(event)
     -- front or back are.. fluid. compare positions to find which end of the train is closer to the station :/
     local back = event.train.back_stock
     local front = event.train.front_stock
-    local station_entity = event.train.station
     if total_position_diff(front, station_entity) > total_position_diff(back, station_entity) then
       -- the back wagon's looking closer than the front, so let's reverse our assumption on which carriage we'll replace
       back = event.train.front_stock
@@ -2281,6 +2284,13 @@ local function draw_scaling_station_gui(player)
     },
     selected_index = stack_index,
   })
+  local deconstruct_nonempty_checkbox = config_flow.add({
+    name = "train_scaling_config_deconstruct_nonempty_toggle",
+    type = "checkbox",
+    state = (scaling_config.deconstruct_nonempty ~= nil),
+    caption = {"train-scaling.config-deconstruct-nonempty"},
+    tooltip = {"train-scaling.config-deconstruct-nonempty-tooltip"},
+  })
   local build_count_display = config_flow.add({
     name = "train_scaling_config_build_count",
     type = "label",
@@ -2309,6 +2319,9 @@ local function update_scaling_station_gui(player)
   if stack_index ~= fuel_stack_dropdown.selected_index then
     fuel_stack_dropdown.selected_index = stack_index
   end
+
+  local deconstruct_nonempty_checkbox = config_flow.train_scaling_config_deconstruct_nonempty_toggle
+  deconstruct_nonempty_checkbox.state = (scaling_config.deconstruct_nonempty ~= nil)
 
   local build_count_display = config_flow.train_scaling_config_build_count
   if build_count_display then
@@ -2453,6 +2466,17 @@ local gui_change_handlers = {
       scaling_config.fuel_stack_count = nil
     else
       scaling_config.fuel_stack_count = event.element.selected_index - 1
+    end
+    entity.last_user = game.players[event.player_index]
+  end,
+
+  train_scaling_config_deconstruct_nonempty_toggle = function(event)
+    local entity = open_entity[event.player_index]
+    local scaling_config = global.scaling_stations[entity.surface.index][entity.force.name][entity.backer_name]
+    if event.element.state == true then
+      scaling_config.deconstruct_nonempty = true
+    else
+      scaling_config.deconstruct_nonempty = nil
     end
     entity.last_user = game.players[event.player_index]
   end,
