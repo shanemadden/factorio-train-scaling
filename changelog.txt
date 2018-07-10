@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.5
+Date: 9. 7. 2018
+  Info:
+    - Add option to deconstuct non-empty trains that stop at train scaling stations
+    - Change scaling stop cost if pyhightech is present
+    - Fix error in equipment grid equality check
+---------------------------------------------------------------------------------------------------
 Version: 0.16.4
 Date: 27. 6. 2018
   Info:
