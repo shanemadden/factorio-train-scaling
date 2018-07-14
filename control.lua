@@ -1315,6 +1315,8 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
                   end
                   -- set the speed to 0 to hopefully kill any extra momentum that other train gave us
                   builder_loco.train.speed = 0
+                  -- clear the schedule
+                  builder_loco.train.schedule = nil
                 end
                 if #builder_loco.train.carriages > 1 then
                   -- still connected to more than we're expecting, must be a train in front, possibly was just pulling in to this station
