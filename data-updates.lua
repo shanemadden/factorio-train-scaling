@@ -4,4 +4,5 @@ if mods.pyhightech then
     {"locomotive", 1},
     {"electronic-circuit", 15},
   }
+  data.raw.technology["train-scaling"].unit.ingredients[3] = nil
 end

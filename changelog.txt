@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.6
+Date: 14. 7. 2018
+  Bugfixes:
+    - Fix crash when the construction train connects to another train and gains a schedule for its template target
+  Info:
+    - Change tech to not require science 3 if pyhightech is present
+---------------------------------------------------------------------------------------------------
 Version: 0.16.5
 Date: 9. 7. 2018
   Info:
