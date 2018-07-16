@@ -127,6 +127,9 @@ local function train_eq(train_a, train_b)
     for i, record in ipairs(train_a_records) do
       if record.station == train_b_records[i].station then
         local train_b_conditions = train_b_records[i].wait_conditions
+        if #train_b_conditions ~= #record.wait_conditions then
+          return false
+        end
         for j, condition in ipairs(record.wait_conditions) do
           if condition.type ~= train_b_conditions[j].type then
             return false
