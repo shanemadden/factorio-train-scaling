@@ -640,6 +640,11 @@ local function deconstruct_carriage_into_inventory(carriage, inventory)
   end
   -- raise event for other mods tracking their carriages before destroying
   script.raise_event(defines.events.script_raised_destroy, {entity = carriage})
+  carriage.surface.play_sound({
+    position = carriage.position,
+    path = 'utility/deconstruct_medium',
+    volume_modifier = 0.9,
+  })
   carriage.destroy()
   return true
 end
@@ -859,6 +864,11 @@ local function building_tick(event)
         -- try to place the next wagon in the train
         local wagon = try_place_wagon[train_config[train_config.cursor].type](train_config, train_config[train_config.cursor])
         if wagon and wagon.valid then
+          wagon.surface.play_sound({
+            position = wagon.position,
+            path = 'utility/build_big',
+            volume_modifier = 0.9,
+          })
           -- wagon landed, make sure things look good
           train_config.expected_length = train_config.expected_length + 1
           local carriage_config = train_config[train_config.cursor]
@@ -1374,6 +1384,12 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
                   end
                 end
 
+                surface.play_sound({
+                  position = train_position,
+                  path = 'utility/build_big',
+                  volume_modifier = 0.9,
+                })
+
                 builder_loco.backer_name = "Train Scaling Train"
                 builder_loco.color = {r = 1, g = 0.45, b = 0, a = 0.8}
 
@@ -1718,6 +1734,13 @@ local function on_train_changed_state(event)
         builder_loco.destroy()
         return
       end
+
+      surface.play_sound({
+        position = builder_loco.position,
+        path = 'utility/build_big',
+        volume_modifier = 0.9,
+      })
+
       builder_loco.backer_name = "Train Scaling Train"
       builder_loco.color = {r = 1, g = 0.45, b = 0, a = 0.8}
 
