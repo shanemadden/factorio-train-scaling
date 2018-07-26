@@ -2370,6 +2370,15 @@ local function gui_refresh(event)
       else
         update_normal_station_gui(game.players[player_index])
       end
+    else
+      open_entity[player_index] = nil
+      local player = game.players[player_index]
+      if player.gui.left.train_scaling_config then
+        player.gui.left.train_scaling_config.destroy()
+      end
+      if not next(open_entity) then
+        script.on_nth_tick(60, nil)
+      end
     end
   end
 end
@@ -2522,7 +2531,18 @@ local gui_click_handlers = {
 
 local function on_gui_event(event)
   if gui_change_handlers[event.element.name] then
-    gui_change_handlers[event.element.name](event)
+    if open_entity[event.player_index] and open_entity[event.player_index].valid then
+      gui_change_handlers[event.element.name](event)
+    else
+      open_entity[event.player_index] = nil
+      local player = game.players[event.player_index]
+      if player.gui.left.train_scaling_config then
+        player.gui.left.train_scaling_config.destroy()
+      end
+      if not next(open_entity) then
+        script.on_nth_tick(60, nil)
+      end
+    end
   end
 end
 script.on_event(defines.events.on_gui_checked_state_changed, on_gui_event)
@@ -2532,7 +2552,18 @@ script.on_event(defines.events.on_gui_value_changed, on_gui_event)
 
 local function on_click_event(event)
   if gui_click_handlers[event.element.name] then
-    gui_click_handlers[event.element.name](event)
+    if open_entity[event.player_index] and open_entity[event.player_index].valid then
+      gui_click_handlers[event.element.name](event)
+    else
+      open_entity[event.player_index] = nil
+      local player = game.players[event.player_index]
+      if player.gui.left.train_scaling_config then
+        player.gui.left.train_scaling_config.destroy()
+      end
+      if not next(open_entity) then
+        script.on_nth_tick(60, nil)
+      end
+    end
   end
 end
 script.on_event(defines.events.on_gui_click, on_click_event)
