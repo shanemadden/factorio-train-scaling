@@ -1,6 +1,6 @@
 {
     "name": "train-scaling",
-    "version": "0.16.7",
+    "version": "0.16.8",
     "title": "Train Scaling",
     "author": "Shane Madden",
     "homepage": "https://github.com/shanemadden/factorio-train-scaling",
@@ -8,5 +8,5 @@
     "dependencies": [
         "base >= 0.16.51"
     ],
-    "description": "Train stations that will construct and deconstruct copies of a configured template train for other stations"
+    "description": "Train stations that will construct and deconstruct copies of a configured template train for other stations, to automate adding and removing trains from your fleet"
 }

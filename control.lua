@@ -1902,6 +1902,52 @@ local function try_decommission(surface_id, force_id, station_name, station_conf
   end
 end
 
+local signal_cache = setmetatable({}, {
+  __mode = "v"
+})
+local signal_cache_age = {}
+local function get_signal_values(station_config, station_name)
+  if signal_cache[station_name] and signal_cache_age[station_name] > game.tick - 600 then
+    return signal_cache[station_name]
+  else
+    local signals = {}
+
+    if station_config.current_signal then
+      signals[station_config.current_signal.name] = {
+        signal = station_config.current_signal,
+        count = station_config.current,
+      }
+    end
+
+    if station_config.total_signal then
+      local station = station_config.entities[next(station_config.entities)]
+      if station.valid then
+        local trains = station.get_train_stop_trains()
+        signals[station_config.total_signal.name] = {
+          signal = station_config.total_signal,
+          count = #trains,
+        }
+      end
+    end
+
+    if station_config.stations_signal then
+      local count = 0
+      for _, entity in pairs(station_config.entities) do
+        count = count + 1
+      end
+      signals[station_config.stations_signal.name] = {
+        signal = station_config.stations_signal,
+        count = count,
+      }
+    end
+
+    signal_cache[station_name] = signals
+    signal_cache_age[station_name] = game.tick
+
+    return signals
+  end
+end
+
 -- cursors for the tick handler that runs all the time - limit the scan to checking a set # of stations per run,
 -- so that performance won't get bad on maps with boatloads of stations
 local cursor_surface
@@ -1933,7 +1979,53 @@ local function construction_check(event)
           -- scan stations
           for station_name, station_config in next, stations, cursor_station do
             if station_config.template and station_config.construction_station then
-              -- config is ready for this stations, check if we have scaling orders through config or signals
+              -- config is ready for this station
+              -- update signals if configured 
+              if station_config.output_signals then
+                local signals = get_signal_values(station_config, station_name)
+                for entity_unit_number, entity in pairs(station_config.entities) do
+                  if entity.valid then
+                    for _, circuit_connection in ipairs(entity.circuit_connection_definitions) do
+                      if circuit_connection.target_entity.name == "constant-combinator" then
+                        local signal_map = {}
+                        for signal_name, signal_table in pairs(signals) do
+                          signal_map[signal_name] = signal_table.signal.type
+                        end
+                        local behavior = circuit_connection.target_entity.get_or_create_control_behavior()
+                        local parameters = behavior.parameters.parameters
+                        for parameter_index, parameter in ipairs(parameters) do
+
+                          if parameter.signal.name and signal_map[parameter.signal.name] == parameter.signal.type then
+                            -- matched, update count
+                            behavior.set_signal(parameter_index, signals[parameter.signal.name])
+                            signal_map[parameter.signal.name] = nil
+                          end
+                          if not next(signal_map) then
+                            -- all signals updated, stop checking this combinator
+                            break
+                          end
+                        end
+
+                        if next(signal_map) then
+                          -- some not found, try to find an empty spot for them
+                          for parameter_index, parameter in ipairs(parameters) do
+                            if parameter.signal.name == nil then
+                              local signal_name = next(signal_map)
+                              behavior.set_signal(parameter_index, signals[signal_name])
+                              signal_map[signal_name] = nil
+                            end
+                            if not next(signal_map) then
+                              -- all signals updated, stop checking this combinator
+                              break
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+              -- check if we have scaling orders through config or signals
               if station_config.target then
                 -- configured to scale, try to reach target
                 if station_config.target > station_config.current + (station_config.running_builds or 0) then
@@ -2185,6 +2277,63 @@ local function draw_normal_station_gui(player)
         text = station_config.target or count,
         tooltip = {"train-scaling.config-target-count-tooltip"},
       })
+      local signals_enabled = station_config.output_signals
+      if not signals_enabled then
+        signals_enabled = false
+      end
+      local signal_checkbox = config_flow.add({
+        name = "train_scaling_config_signal_toggle",
+        type = "checkbox",
+        state = signals_enabled,
+        caption = {"train-scaling.config-enable-signals"},
+        tooltip = {"train-scaling.config-enable-signals-tooltip"},
+      })
+      if signals_enabled then
+        local signal_table = config_flow.add({
+          name = "train_scaling_config_signal_table",
+          type = "table",
+          column_count = 2,
+        })
+
+        local current_label = signal_table.add({
+          name = "train_scaling_config_current_label",
+          type = "label",
+          caption = {"train-scaling.config-current-count-signal"},
+        })
+        local current_choose = signal_table.add({
+          name = "train_scaling_config_current_choose",
+          type = "choose-elem-button",
+          style = "slot_button",
+          elem_type = "signal",
+        })
+        current_choose.elem_value = station_config.current_signal
+
+        local total_label = signal_table.add({
+          name = "train_scaling_config_total_label",
+          type = "label",
+          caption = {"train-scaling.config-total-count-signal"},
+        })
+        local total_choose = signal_table.add({
+          name = "train_scaling_config_total_choose",
+          type = "choose-elem-button",
+          style = "slot_button",
+          elem_type = "signal",
+        })
+        total_choose.elem_value = station_config.total_signal
+
+        local stations_label = signal_table.add({
+          name = "train_scaling_config_stations_label",
+          type = "label",
+          caption = {"train-scaling.config-stations-count-signal"},
+        })
+        local stations_choose = signal_table.add({
+          name = "train_scaling_config_stations_choose",
+          type = "choose-elem-button",
+          style = "slot_button",
+          elem_type = "signal",
+        })
+        stations_choose.elem_value = station_config.stations_signal
+      end
       local count_label = config_flow.add({
         name = "train_scaling_config_count_display",
         type = "label",
@@ -2260,9 +2409,28 @@ local function update_normal_station_gui(player)
     end
   end
 
+  -- signal checkbox, signals
+  local signal_checkbox = config_flow.train_scaling_config_signal_toggle
+  local signal_table = config_flow.train_scaling_config_signal_table
+  if signal_table and signal_checkbox.state == false then
+    return draw_normal_station_gui(player)
+  elseif not signal_table and signal_checkbox.state == true then
+    return draw_normal_station_gui(player)
+  end
+  if signal_table then
+    local current_choose = signal_table.train_scaling_config_current_choose
+    current_choose.elem_value = station_config.current_signal
+
+    local total_choose = signal_table.train_scaling_config_total_choose
+    total_choose.elem_value = station_config.total_signal
+
+    local stations_choose = signal_table.train_scaling_config_stations_choose
+    stations_choose.elem_value = station_config.stations_signal
+  end
+
   local count_label = config_flow.train_scaling_config_count_display
   if count_label then
-        if station_config.running_builds and station_config.running_builds > 0 then
+    if station_config.running_builds and station_config.running_builds > 0 then
       count_label.caption = {"train-scaling.config-current-count-with-building", station_config.current, station_config.running_builds}
     else
       count_label.caption = {"train-scaling.config-current-count", station_config.current}
@@ -2488,6 +2656,94 @@ local gui_change_handlers = {
     draw_normal_station_gui(game.players[event.player_index])
   end,
 
+  train_scaling_config_signal_toggle = function(event)
+    local entity = open_entity[event.player_index]
+    local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
+    if event.element.state == true then
+      station_config.output_signals = true
+      -- set default signals if they aren't set
+      if not station_config.current_signal then
+        station_config.current_signal = { name = "signal-C", type = "virtual" }
+      end
+      if not station_config.total_signal then
+        station_config.total_signal = { name = "signal-T", type = "virtual" }
+      end
+      if not station_config.stations_signal then
+        station_config.stations_signal = { name = "train-stop", type = "item" }
+      end
+    else
+      station_config.output_signals = nil
+    end
+    entity.last_user = game.players[event.player_index]
+    draw_normal_station_gui(game.players[event.player_index])
+  end,
+
+  train_scaling_config_current_choose = function(event)
+    local entity = open_entity[event.player_index]
+    local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
+    local signal = event.element.elem_value
+    if signal then
+      if signal.name == "signal-train-scale-up" or signal.name == "signal-train-scale-down" then
+        -- don't allow these since the signals would always come right back and trigger scaling
+        event.element.elem_value = nil
+        signal = nil
+      end
+    end
+    station_config.current_signal = signal
+    if signal then
+      if station_config.total_signal and station_config.total_signal.name == signal.name then
+        station_config.total_signal = nil
+      end
+      if station_config.stations_signal and station_config.stations_signal.name == signal.name then
+        station_config.stations_signal = nil
+      end
+    end
+  end,
+
+  train_scaling_config_total_choose = function(event)
+    local entity = open_entity[event.player_index]
+    local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
+    local signal = event.element.elem_value
+    if signal then
+      if signal.name == "signal-train-scale-up" or signal.name == "signal-train-scale-down" then
+        -- don't allow these since the signals would always come right back and trigger scaling
+        event.element.elem_value = nil
+        signal = nil
+      end
+    end
+    station_config.total_signal = signal
+    if signal then
+      if station_config.current_signal and station_config.current_signal.name == signal.name then
+        station_config.current_signal = nil
+      end
+      if station_config.stations_signal and station_config.stations_signal.name == signal.name then
+        station_config.stations_signal = nil
+      end
+    end
+  end,
+
+  train_scaling_config_stations_choose = function(event)
+    local entity = open_entity[event.player_index]
+    local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
+    local signal = event.element.elem_value
+    if signal then
+      if signal.name == "signal-train-scale-up" or signal.name == "signal-train-scale-down" then
+        -- don't allow these since the signals would always come right back and trigger scaling
+        event.element.elem_value = nil
+        signal = nil
+      end
+    end
+    station_config.stations_signal = signal
+    if signal then
+      if station_config.current_signal and station_config.current_signal.name == signal.name then
+        station_config.current_signal = nil
+      end
+      if station_config.total_signal and station_config.total_signal.name == signal.name then
+        station_config.total_signal = nil
+      end
+    end
+  end,
+
   train_scaling_station_picker_dropdown = function(event)
     local entity = open_entity[event.player_index]
     if event.element.items[event.element.selected_index] ~= "" then
@@ -2549,6 +2805,7 @@ script.on_event(defines.events.on_gui_checked_state_changed, on_gui_event)
 script.on_event(defines.events.on_gui_selection_state_changed, on_gui_event)
 script.on_event(defines.events.on_gui_text_changed, on_gui_event)
 script.on_event(defines.events.on_gui_value_changed, on_gui_event)
+script.on_event(defines.events.on_gui_elem_changed, on_gui_event)
 
 local function on_click_event(event)
   if gui_click_handlers[event.element.name] then

@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.8
+Date: 28. 7. 2018
+  Bugfixes:
+    - Fix crash when changing settings for a station that's been removed
+  Info:
+    - Added sounds for wagon construction/deconstruction
+    - Added option to send circuit network signals with useful statistics through a directly-wired constant combinator
+---------------------------------------------------------------------------------------------------
 Version: 0.16.7
 Date: 15. 7. 2018
   Bugfixes:
