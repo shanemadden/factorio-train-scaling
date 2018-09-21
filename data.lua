@@ -52,6 +52,8 @@ local technology = {
 local entity = util.table.deepcopy(data.raw["train-stop"]["train-stop"])
 entity.name = "train-scaling-stop"
 entity.color = {r = 1, g = 0.45, b = 0, a = 0.8}
+entity.icon = "__train-scaling__/graphics/icons/train-scaling-stop.png"
+entity.minable.result = "train-scaling-stop"
 
 local player = util.table.deepcopy(data.raw["player"]["player"])
 player.name = "train-scaling-driver"
