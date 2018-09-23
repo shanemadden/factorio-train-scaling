@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.10
+Date: 23. 9. 2018
+  Bugfixes:
+    - Add a check for entity validity to avoid a potential crash finding a station to build a train
+---------------------------------------------------------------------------------------------------
 Version: 0.16.9
 Date: 21. 9. 2018
   Bugfixes:

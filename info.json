@@ -1,6 +1,6 @@
 {
     "name": "train-scaling",
-    "version": "0.16.9",
+    "version": "0.16.10",
     "title": "Train Scaling",
     "author": "Shane Madden",
     "homepage": "https://github.com/shanemadden/factorio-train-scaling",
@@ -8,5 +8,5 @@
     "dependencies": [
         "base >= 0.16.51"
     ],
-    "description": "Train stations that will construct and deconstruct copies of a configured template train for other stations, to automate adding and removing trains from your fleet"
+    "description": "Automate the construction and deconstruction of your trains! Configure a train currently scheduled for a station as a template for the station - the mod's special train construction station will automatically build (or destroy) copies of the template train on demand, or in response to circuit conditions."
 }

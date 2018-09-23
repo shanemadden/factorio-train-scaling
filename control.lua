@@ -1191,7 +1191,9 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
     local fail_reasons = {}
     local built_count = 0
     for station_entity_id, station_entity in pairs(scaling_config.entities) do
-      if not global.scaling_build_queue[station_entity.unit_number] then
+      if not station_entity.valid then
+        scaling_config.entities[station_entity_id] = nil
+      elseif not global.scaling_build_queue[station_entity_id] then
         local build_config = util.table.deepcopy(train_config)
         local fail = false
         local fail_reason
