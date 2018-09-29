@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.16.11
+Date: 29. 9. 2018
+  Bugfixes:
+    - Fix a crash that occurred when a non-filling number of fuel stacks are available for a builder train doing a deconstruct job
+  Info:
+    - Artificially fire an on_entity_settings_pasted event to notify mods which might want to do additional work to copy settings to new custom wagons; let me know if this causes problems for your mod and I'll switch it to a custom event
+---------------------------------------------------------------------------------------------------
 Version: 0.16.10
 Date: 23. 9. 2018
   Bugfixes:

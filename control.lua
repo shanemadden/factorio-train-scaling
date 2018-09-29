@@ -473,6 +473,7 @@ local carriage_to_table = {
       type = "locomotive",
       fuel_categories = fuel_categories,
       grid = grid_to_table(carriage.grid),
+      entity = carriage,
     }
   end,
   ["cargo-wagon"] = function(carriage)
@@ -480,6 +481,7 @@ local carriage_to_table = {
       name = carriage.name,
       type = "cargo-wagon",
       grid = grid_to_table(carriage.grid),
+      entity = carriage,
     }
     local inventory = carriage.get_inventory(defines.inventory.cargo_wagon)
     if inventory.hasbar() then
@@ -498,6 +500,7 @@ local carriage_to_table = {
       name = carriage.name,
       type = "fluid-wagon",
       grid = grid_to_table(carriage.grid),
+      entity = carriage,
     }
   end,
   -- these are directional, try to figure out a good way to determine template's facing?
@@ -506,6 +509,7 @@ local carriage_to_table = {
       name = carriage.name,
       type = "artillery-wagon",
       grid = grid_to_table(carriage.grid),
+      entity = carriage,
     }
   end,
 }
@@ -972,6 +976,18 @@ local function building_tick(event)
               -- nothing else to fail, mark the carriage as complete
               -- update progress watermark for timeout checks
               train_config.progress_tick = event.tick
+
+              if carriage_config.entity and carriage_config.entity.valid and train_config.builder_station.last_user then
+                -- artificially raise a paste event - we've copied everything but the schedule (which we don't want yet)
+                -- so allow any mods that have more stuff to do in reaction to a paste on their entities to do that work as if this was a proper paste
+                -- (if this messes up your mod, let me know - the other option here is to use a custom event for mods that wish to subscribe)
+                script.raise_event(defines.events.on_entity_settings_pasted, {
+                  player_index = train_config.builder_station.last_user.index,
+                  source = carriage_config.entity,
+                  destination = wagon,
+                })
+              end
+              
               -- notify other mods which might need to track when their train cars get built
               script.raise_event(defines.events.script_raised_built, {created_entity = wagon})
               -- move to the next car
@@ -1711,13 +1727,18 @@ local function on_train_changed_state(event)
           if game.item_prototypes[item_name].fuel_category and builder_loco.burner.fuel_categories[game.item_prototypes[item_name].fuel_category] then
             local i = 1
             while fuel_inventory.can_insert(item_name) and i <= 5 do
-              fuel_inventory.insert({
+              local remove_count = chest_inventory.remove({
                 name = item_name,
-                count = chest_inventory.remove({
-                  name = item_name,
-                  count = game.item_prototypes[item_name].stack_size,
-                }),
+                count = game.item_prototypes[item_name].stack_size,
               })
+              if remove_count > 0 then
+                fuel_inventory.insert({
+                  name = item_name,
+                  count = remove_count,
+                })
+              else
+                break
+              end
               i = i + 1
             end
           end
