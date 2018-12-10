@@ -976,6 +976,9 @@ local function building_tick(event)
               -- nothing else to fail, mark the carriage as complete
               -- update progress watermark for timeout checks
               train_config.progress_tick = event.tick
+              
+              -- notify other mods which might need to track when their train cars get built
+              script.raise_event(defines.events.script_raised_built, {created_entity = wagon})
 
               if carriage_config.entity and carriage_config.entity.valid and train_config.builder_station.last_user then
                 -- artificially raise a paste event - we've copied everything but the schedule (which we don't want yet)
@@ -988,8 +991,6 @@ local function building_tick(event)
                 })
               end
               
-              -- notify other mods which might need to track when their train cars get built
-              script.raise_event(defines.events.script_raised_built, {created_entity = wagon})
               -- move to the next car
               train_config.cursor = train_config.cursor - 1
               if train_config.cursor == 0 then
@@ -1171,14 +1172,16 @@ local function building_tick(event)
   end
 end
 
-local errors = {}
 local function try_build(surface_id, force_id, station_name, station_config, scaling_config, count)
   if station_config.template and station_config.template.valid then
     -- clear error rate limiters for stations whose errors were long enough ago
+    if not global.errors then
+      global.errors = {}
+    end
     local tick = game.tick
-    for i, error_tick in pairs(errors) do
+    for i, error_tick in pairs(global.errors) do
       if tick - error_tick >= 180 then
-        errors[i] = nil
+        global.errors[i] = nil
       end
     end
     -- set up the build plan for the train desired
@@ -1473,7 +1476,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
     -- didn't get all of our builds completed, create some floating text entities
     for station_entity_id, station_entity in pairs(scaling_config.entities) do
       if fail_reasons[station_entity_id] then
-        if not errors[station_entity_id] then
+        if not global.errors[station_entity_id] then
           surface.create_entity({
             name = "flying-text",
             text = {fail_reasons[station_entity_id]},
@@ -1481,7 +1484,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
             color = {r = 1, g = 0.45, b = 0, a = 0.8},
             force = station_entity.force,
           })
-          errors[station_entity_id] = tick
+          global.errors[station_entity_id] = tick
         end
       end
     end
@@ -1925,82 +1928,67 @@ local function try_decommission(surface_id, force_id, station_name, station_conf
   end
 end
 
-local signal_cache = setmetatable({}, {
-  __mode = "v"
-})
-local signal_cache_age = {}
 local function get_signal_values(station_config, station_name)
-  if signal_cache[station_name] and signal_cache_age[station_name] > game.tick - 600 then
-    return signal_cache[station_name]
-  else
-    local signals = {}
+  local signals = {}
 
-    if station_config.current_signal then
-      signals[station_config.current_signal.name] = {
-        signal = station_config.current_signal,
-        count = station_config.current,
-      }
-    end
-
-    if station_config.total_signal then
-      local station = station_config.entities[next(station_config.entities)]
-      if station.valid then
-        local trains = station.get_train_stop_trains()
-        signals[station_config.total_signal.name] = {
-          signal = station_config.total_signal,
-          count = #trains,
-        }
-      end
-    end
-
-    if station_config.stations_signal then
-      local count = 0
-      for _, entity in pairs(station_config.entities) do
-        count = count + 1
-      end
-      signals[station_config.stations_signal.name] = {
-        signal = station_config.stations_signal,
-        count = count,
-      }
-    end
-
-    signal_cache[station_name] = signals
-    signal_cache_age[station_name] = game.tick
-
-    return signals
+  if station_config.current_signal then
+    signals[station_config.current_signal.name] = {
+      signal = station_config.current_signal,
+      count = station_config.current,
+    }
   end
+
+  if station_config.total_signal then
+    local station = station_config.entities[next(station_config.entities)]
+    if station.valid then
+      local trains = station.get_train_stop_trains()
+      signals[station_config.total_signal.name] = {
+        signal = station_config.total_signal,
+        count = #trains,
+      }
+    end
+  end
+
+  if station_config.stations_signal then
+    local count = 0
+    for _, entity in pairs(station_config.entities) do
+      count = count + 1
+    end
+    signals[station_config.stations_signal.name] = {
+      signal = station_config.stations_signal,
+      count = count,
+    }
+  end
+
+  return signals
 end
 
 -- cursors for the tick handler that runs all the time - limit the scan to checking a set # of stations per run,
 -- so that performance won't get bad on maps with boatloads of stations
-local cursor_surface
-local cursor_force
-local cursor_station
-local cursor_entity
 local function construction_check(event)
   local check_count = 0
   -- check that the cursor surface hasn't been nilled between ticks
-  if cursor_surface and not rawget(global.enabled_stations, cursor_surface) then
-    cursor_surface = nil
+  if global.cursor_surface and not rawget(global.enabled_stations, global.cursor_surface) then
+    global.cursor_surface = nil
   end
   -- scan surfaces
-  for surface, forces in next, global.enabled_stations, cursor_surface do
+  for surface, forces in next, global.enabled_stations, global.cursor_surface do
     -- skip __mt__ entries
     if type(forces) ~= "string" then
       -- check that the force hasn't been nilled between ticks
-      if cursor_force and not rawget(forces, cursor_force) then
-        cursor_force = nil
+      if global.cursor_force and not rawget(forces, global.cursor_force) then
+        global.cursor_force = nil
       end
       -- scan stations
-      for force, stations in next, forces, cursor_force do
+      for force, stations in next, forces, global.cursor_force do
         -- skip __mt__ entries
         if type(stations) ~= "string" then
           -- check that the station name hasn't been deconfigured between ticks
-          if cursor_station and not rawget(stations, cursor_station) then
-            cursor_station = nil
+          if global.cursor_station and not rawget(stations, global.cursor_station) then
+            global.cursor_station = nil
           end
           -- scan stations
-          for station_name, station_config in next, stations, cursor_station do
+          for station_name, station_config in next, stations, global.cursor_station do
             if station_config.template and station_config.construction_station then
               -- config is ready for this station
               -- update signals if configured 
@@ -2060,11 +2048,11 @@ local function construction_check(event)
                 check_count = check_count + 5
               else
                 -- check that the cursor entity hasn't been deconfigured between ticks
-                if cursor_entity and not station_config.entities[cursor_entity] then
-                  cursor_entity = nil
+                if global.cursor_entity and not station_config.entities[global.cursor_entity] then
+                  global.cursor_entity = nil
                 end
                 -- scan entities for signals
-                for entity_unit_number, entity in next, station_config.entities, cursor_entity do
+                for entity_unit_number, entity in next, station_config.entities, global.cursor_entity do
                   if entity.valid then
                     local up
                     local down
@@ -2088,37 +2076,35 @@ local function construction_check(event)
                       end
                     end
                   end
-                  cursor_entity = entity_unit_number
+                  global.cursor_entity = entity_unit_number
 
                   check_count = check_count + 1
                   if check_count >= 15 then
                     return
                   end
                 end
-                cursor_entity = nil
+                global.cursor_entity = nil
               end
             end
 
-            cursor_station = station_name
+            global.cursor_station = station_name
             if check_count >= 15 then
               return
             end
           end
-          cursor_station = nil
+          global.cursor_station = nil
         end
-        cursor_force = force
+        global.cursor_force = force
       end
-      cursor_force = nil
+      global.cursor_force = nil
     end
-    cursor_surface = surface
+    global.cursor_surface = surface
   end
-  cursor_surface = nil
+  global.cursor_surface = nil
 end
 script.on_nth_tick(300, construction_check)
 
 -- UI stuff!
-local open_entity = {}
-local open_train_dropdown_mapping = {}
 local function get_trains_dropdown(entity, player)
   local template = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].template
   local template_train_id
@@ -2126,7 +2112,10 @@ local function get_trains_dropdown(entity, player)
     template_train_id = template.train.id
   end
   local items = {{"train-scaling.config-no-template"}}
-  open_train_dropdown_mapping[player.index] = {0}
+  if not global.open_train_dropdown_mapping then
+    global.open_train_dropdown_mapping = {}
+  end
+  global.open_train_dropdown_mapping[player.index] = {0}
   local selected = 1
   for i, train in ipairs(entity.get_train_stop_trains()) do
     if train.id == template_train_id then
@@ -2176,7 +2165,7 @@ local function get_trains_dropdown(entity, player)
         train_string = string.format("%s %dL", train_string, backward)
       end
       table.insert(items, string.format("%s, %dst", train_string, #train.schedule.records))
-      table.insert(open_train_dropdown_mapping[player.index], loco)
+      table.insert(global.open_train_dropdown_mapping[player.index], loco)
     end
   end
   if template and template.valid and selected == 1 then
@@ -2184,13 +2173,13 @@ local function get_trains_dropdown(entity, player)
     table.insert(items, {"train-scaling.disassociated-train"})
     selected = #items
     -- add a buffer item for the redraw
-    table.insert(open_train_dropdown_mapping[player.index], false)
+    table.insert(global.open_train_dropdown_mapping[player.index], false)
   end
   return items, selected
 end
 
 local function draw_normal_station_gui(player)
-  local entity = open_entity[player.index]
+  local entity = player.opened
 
   local empty = true
   for k, v in pairs(global.scaling_stations[entity.surface.index][entity.force.name]) do
@@ -2380,7 +2369,7 @@ local function draw_normal_station_gui(player)
 end
 
 local function update_normal_station_gui(player)
-  local entity = open_entity[player.index]
+  local entity = player.opened
 
   if not player.gui.left.train_scaling_config or not entity or not entity.valid then
     return
@@ -2406,11 +2395,14 @@ local function update_normal_station_gui(player)
   end
   local template_dropdown = config_flow.train_scaling_template_flow.train_scaling_config_template_dropdown
   if station_config.template and station_config.template.valid then
+    if not global.open_train_dropdown_mapping then
+      global.open_train_dropdown_mapping = {}
+    end
     if template_dropdown.selected_index == 1 then
       -- template configured but gui thinks it isn't, redraw
       return draw_normal_station_gui(player)
-    elseif open_train_dropdown_mapping[player.index][template_dropdown.selected_index] then
-      if station_config.template.unit_number ~= open_train_dropdown_mapping[player.index][template_dropdown.selected_index].unit_number then
+    elseif global.open_train_dropdown_mapping[player.index][template_dropdown.selected_index] then
+      if station_config.template.unit_number ~= global.open_train_dropdown_mapping[player.index][template_dropdown.selected_index].unit_number then
         --template doesn't match what we have in the dropdown, redraw
         return draw_normal_station_gui(player)
       end
@@ -2472,7 +2464,7 @@ local function update_normal_station_gui(player)
 end
 
 local function draw_scaling_station_gui(player)
-  local entity = open_entity[player.index]
+  local entity = player.opened
   if player.gui.left.train_scaling_config then
     player.gui.left.train_scaling_config.destroy()
   end
@@ -2523,7 +2515,7 @@ local function draw_scaling_station_gui(player)
 end
 
 local function update_scaling_station_gui(player)
-  local entity = open_entity[player.index]
+  local entity = player.opened
   if not player.gui.left.train_scaling_config or not entity then
     return
   end
@@ -2554,7 +2546,10 @@ local function update_scaling_station_gui(player)
 end
 
 local function gui_refresh(event)
-  for player_index, entity in pairs(open_entity) do
+  if not global.open_entity then
+    global.open_entity = {}
+  end
+  for player_index, entity in pairs(global.open_entity) do
     if entity and entity.valid then
       if entity.name == "train-scaling-stop" then
         update_scaling_station_gui(game.players[player_index])
@@ -2562,12 +2557,12 @@ local function gui_refresh(event)
         update_normal_station_gui(game.players[player_index])
       end
     else
-      open_entity[player_index] = nil
+      global.open_entity[player_index] = nil
       local player = game.players[player_index]
       if player.gui.left.train_scaling_config then
         player.gui.left.train_scaling_config.destroy()
       end
-      if not next(open_entity) then
+      if not next(global.open_entity) then
         script.on_nth_tick(60, nil)
       end
     end
@@ -2578,17 +2573,20 @@ local function on_gui_opened(event)
   if event.entity and event.entity.type == "train-stop" then
     local player = game.players[event.player_index]
     if player.permission_group.allows_action(defines.input_action.edit_train_schedule) then
+      if not global.open_entity then
+        global.open_entity = {}
+      end
       if event.entity.name == "train-scaling-stop" then
-        if not next(open_entity) then
+        if not next(global.open_entity) then
           script.on_nth_tick(60, gui_refresh)
         end
-        open_entity[event.player_index] = event.entity
+        global.open_entity[event.player_index] = event.entity
         draw_scaling_station_gui(player)
       else
-        if not next(open_entity) then
+        if not next(global.open_entity) then
           script.on_nth_tick(60, gui_refresh)
         end
-        open_entity[event.player_index] = event.entity
+        global.open_entity[event.player_index] = event.entity
         draw_normal_station_gui(player)
       end
     end
@@ -2598,12 +2596,15 @@ script.on_event(defines.events.on_gui_opened, on_gui_opened)
 
 local function on_gui_closed(event)
   if event.entity and event.entity.type == "train-stop" then
-    open_entity[event.player_index] = nil
+    if not global.open_entity then
+      global.open_entity = {}
+    end
+    global.open_entity[event.player_index] = nil
     local player = game.players[event.player_index]
     if player.gui.left.train_scaling_config then
       player.gui.left.train_scaling_config.destroy()
     end
-    if not next(open_entity) then
+    if not next(global.open_entity) then
       script.on_nth_tick(60, nil)
     end
   end
@@ -2612,7 +2613,8 @@ script.on_event(defines.events.on_gui_closed, on_gui_closed)
 
 local gui_change_handlers = {
   train_scaling_config_enable_toggle = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     if event.element.state == true then
       if entity.backer_name == "__mt__" then
         -- blacklist this station name since it'll overwrite our metatable markers
@@ -2637,7 +2639,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_target_slider = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     event.element.slider_value = math.floor(event.element.slider_value)
     station_config.target = event.element.slider_value
@@ -2649,7 +2652,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_target_textbox = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     if tonumber(event.element.text) and tonumber(event.element.text) >= 0 then
       if tonumber(event.element.text) > 1000 then
@@ -2667,12 +2671,16 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_template_dropdown = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     if event.element.selected_index == 1 then
       global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].template = nil
     else
-      if open_train_dropdown_mapping[event.player_index] and open_train_dropdown_mapping[event.player_index][event.element.selected_index] and open_train_dropdown_mapping[event.player_index][event.element.selected_index].valid then
-        global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].template = open_train_dropdown_mapping[event.player_index][event.element.selected_index]
+      if not global.open_train_dropdown_mapping then
+        global.open_train_dropdown_mapping = {}
+      end
+      if global.open_train_dropdown_mapping[event.player_index] and global.open_train_dropdown_mapping[event.player_index][event.element.selected_index] and global.open_train_dropdown_mapping[event.player_index][event.element.selected_index].valid then
+        global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].template = global.open_train_dropdown_mapping[event.player_index][event.element.selected_index]
       end
     end
     entity.last_user = game.players[event.player_index]
@@ -2680,7 +2688,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_signal_toggle = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     if event.element.state == true then
       station_config.output_signals = true
@@ -2702,7 +2711,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_current_choose = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     local signal = event.element.elem_value
     if signal then
@@ -2724,7 +2734,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_total_choose = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     local signal = event.element.elem_value
     if signal then
@@ -2746,7 +2757,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_stations_choose = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local station_config = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name]
     local signal = event.element.elem_value
     if signal then
@@ -2768,7 +2780,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_station_picker_dropdown = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     if event.element.items[event.element.selected_index] ~= "" then
       global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].construction_station = event.element.items[event.element.selected_index]
     end
@@ -2776,7 +2789,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_station_fuel_stack_dropdown = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local scaling_config = global.scaling_stations[entity.surface.index][entity.force.name][entity.backer_name]
     if event.element.selected_index == 1 then
       scaling_config.fuel_stack_count = nil
@@ -2787,7 +2801,8 @@ local gui_change_handlers = {
   end,
 
   train_scaling_config_deconstruct_nonempty_toggle = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local scaling_config = global.scaling_stations[entity.surface.index][entity.force.name][entity.backer_name]
     if event.element.state == true then
       scaling_config.deconstruct_nonempty = true
@@ -2800,7 +2815,8 @@ local gui_change_handlers = {
 
 local gui_click_handlers = {
   train_scaling_config_template_goto_button = function(event)
-    local entity = open_entity[event.player_index]
+    local player = game.players[event.player_index]
+    local entity = player.opened
     local template = global.enabled_stations[entity.surface.index][entity.force.name][entity.backer_name].template
     if template and template.valid then
       game.players[event.player_index].opened = template
@@ -2810,15 +2826,18 @@ local gui_click_handlers = {
 
 local function on_gui_event(event)
   if gui_change_handlers[event.element.name] then
-    if open_entity[event.player_index] and open_entity[event.player_index].valid then
+    if not global.open_entity then
+      global.open_entity = {}
+    end
+    if global.open_entity[event.player_index] and global.open_entity[event.player_index].valid then
       gui_change_handlers[event.element.name](event)
     else
-      open_entity[event.player_index] = nil
+      global.open_entity[event.player_index] = nil
       local player = game.players[event.player_index]
       if player.gui.left.train_scaling_config then
         player.gui.left.train_scaling_config.destroy()
       end
-      if not next(open_entity) then
+      if not next(global.open_entity) then
         script.on_nth_tick(60, nil)
       end
     end
@@ -2832,15 +2851,18 @@ script.on_event(defines.events.on_gui_elem_changed, on_gui_event)
 
 local function on_click_event(event)
   if gui_click_handlers[event.element.name] then
-    if open_entity[event.player_index] and open_entity[event.player_index].valid then
+    if not global.open_entity then
+      global.open_entity = {}
+    end
+    if global.open_entity[event.player_index] and global.open_entity[event.player_index].valid then
       gui_click_handlers[event.element.name](event)
     else
-      open_entity[event.player_index] = nil
+      global.open_entity[event.player_index] = nil
       local player = game.players[event.player_index]
       if player.gui.left.train_scaling_config then
         player.gui.left.train_scaling_config.destroy()
       end
-      if not next(open_entity) then
+      if not next(global.open_entity) then
         script.on_nth_tick(60, nil)
       end
     end
