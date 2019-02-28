@@ -5,7 +5,7 @@ local item = {
   name = "train-scaling-stop",
   icon = "__train-scaling__/graphics/icons/train-scaling-stop.png",
   icon_size = 32,
-  flags = {"goes-to-quickbar"},
+  flags = {},
   subgroup = "transport",
   order = "a[train-system]-cz[train-scaling-stop]",
   place_result = "train-scaling-stop",
@@ -40,9 +40,9 @@ local technology = {
     count = 500,
     ingredients =
     {
-      {"science-pack-1", 1},
-      {"science-pack-2", 1},
-      {"science-pack-3", 1},
+      {"automation-science-pack", 1},
+      {"logistic-science-pack", 1},
+      {"chemical-science-pack", 1},
     },
     time = 30
   },

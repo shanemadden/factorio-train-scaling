@@ -881,7 +881,7 @@ local function building_tick(event)
           -- remove the wagon from the input chest
           local count = input_inventory.remove({
             name = carriage_config.item_to_place,
-            count = 1,
+            count = carriage_config.item_to_place_count,
           })
           if count ~= 1 then
             -- didn't have one in the inventory
@@ -1200,9 +1200,8 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
       else
         train_config[i] = carriage_to_table[carriage.type](carriage, true)
       end
-      local items_to_place = carriage.prototype.items_to_place_this
       if not train_items[carriage.name] then
-        train_items[carriage.name] = items_to_place
+        train_items[carriage.name] = carriage.prototype.items_to_place_this
       end
     end
 
@@ -1237,15 +1236,15 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
           -- check chest contents
           local chest_inventory = input_chest_entities[1].get_inventory(defines.inventory.chest)
           local contents = chest_inventory.get_contents()
-          local item_counts = {}
           for i, carriage_config in ipairs(build_config) do
             local found = false
-            -- iterate the items that might place the train entity we're after, see if we have one in the contents.
-            for item_name in pairs(train_items[carriage_config.name]) do
-              if contents[item_name] and contents[item_name] > 0 then
-                -- found one, reduce its count by 1 and save which item we're planning to use for it.
-                contents[item_name] = contents[item_name] - 1
-                carriage_config.item_to_place = item_name
+            -- iterate the items that might place the carriage entity we're after, see if we have one in the contents.
+            for _, simple_stack in ipairs(train_items[carriage_config.name]) do
+              if contents[simple_stack.name] and contents[simple_stack.name] >= simple_stack.count then
+                -- found one, reduce its count by the number needed and save which item we're planning to use for it.
+                contents[simple_stack.name] = contents[simple_stack.name] - simple_stack.count
+                carriage_config.item_to_place = simple_stack.name
+                carriage_config.item_to_place_count = simple_stack.count
                 found = true
                 break
               end
@@ -2151,20 +2150,20 @@ local function get_trains_dropdown(entity, player)
     -- todo, change these to the fancy new item strings in 0.17 - https://www.factorio.com/blog/post/fff-237
     -- [icon=item/locomotive] etc
     if loco then
-      local train_string = string.format("%dL", forward)
+      local train_string = string.format("%d[item=locomotive]", forward)
       if cargo > 0 then
-        train_string = string.format("%s %dC", train_string, cargo)
+        train_string = string.format("%s-%d[item=cargo-wagon]", train_string, cargo)
       end
       if fluid > 0 then
-        train_string = string.format("%s %dF", train_string, fluid)
+        train_string = string.format("%s-%d[item=fluid-wagon]", train_string, fluid)
       end
       if artillery > 0 then
-        train_string = string.format("%s %dA", train_string, artillery)
+        train_string = string.format("%s-%d[item=artillery-wagon]", train_string, artillery)
       end
       if backward > 0 then
-        train_string = string.format("%s %dL", train_string, backward)
+        train_string = string.format("%s-%d[item=locomotive]", train_string, backward)
       end
-      table.insert(items, string.format("%s, %dst", train_string, #train.schedule.records))
+      table.insert(items, string.format("%s  (%d[item=train-stop])", train_string, #train.schedule.records))
       table.insert(global.open_train_dropdown_mapping[player.index], loco)
     end
   end
@@ -2572,7 +2571,7 @@ end
 local function on_gui_opened(event)
   if event.entity and event.entity.type == "train-stop" then
     local player = game.players[event.player_index]
-    if player.permission_group.allows_action(defines.input_action.edit_train_schedule) then
+    if player.permission_group.allows_action(defines.input_action.change_train_wait_condition) then
       if not global.open_entity then
         global.open_entity = {}
       end
