@@ -1,35 +1,41 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.17.1
+Date: 07. 04. 2019
+  Bugfixes:
+    - Fix a couple potential crashes attempting to use non-fuel items as fuel
+    - Fix a crash when scaling trains with no-wait-condition stops in their schedule
+---------------------------------------------------------------------------------------------------
 Version: 0.17.0
-Date: 28. 2. 2019
+Date: 28. 02. 2019
   Changes:
     - Update for 0.17
     - Use new item icons for template selection dropdown
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.12
-Date: 9. 12. 2018
+Date: 09. 12. 2018
   Bugfixes:
     - Fix a couple of potential desyncs
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.11
-Date: 29. 9. 2018
+Date: 29. 09. 2018
   Bugfixes:
     - Fix a crash that occurred when a non-filling number of fuel stacks are available for a builder train doing a deconstruct job
   Info:
     - Artificially fire an on_entity_settings_pasted event to notify mods which might want to do additional work to copy settings to new custom wagons; let me know if this causes problems for your mod and I'll switch it to a custom event
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.10
-Date: 23. 9. 2018
+Date: 23. 09. 2018
   Bugfixes:
     - Add a check for entity validity to avoid a potential crash finding a station to build a train
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.9
-Date: 21. 9. 2018
+Date: 21. 09. 2018
   Bugfixes:
     - Update signal descriptions
     - Fix icon and mined item for scaling stop entities
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.8
-Date: 28. 7. 2018
+Date: 28. 07. 2018
   Bugfixes:
     - Fix crash when changing settings for a station that's been removed
   Info:
@@ -37,50 +43,50 @@ Date: 28. 7. 2018
     - Added option to send circuit network signals with useful statistics through a directly-wired constant combinator
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.7
-Date: 15. 7. 2018
+Date: 15. 07. 2018
   Bugfixes:
     - Fix crash when comparing train schedules
   Info:
     - Remove advanced circuits prereq from tech when pyhightech present
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.6
-Date: 14. 7. 2018
+Date: 14. 07. 2018
   Bugfixes:
     - Fix crash when the construction train connects to another train and gains a schedule for its template target
   Info:
     - Change tech to not require science 3 if pyhightech is present
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.5
-Date: 9. 7. 2018
+Date: 09. 07. 2018
   Info:
     - Add option to deconstuct non-empty trains that stop at train scaling stations
     - Change scaling stop cost if pyhightech is present
     - Fix error in equipment grid equality check
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.4
-Date: 27. 6. 2018
+Date: 27. 06. 2018
   Info:
     - Raise script_raised_built (with created_entity just after creation) and script_raised_destroy (with entity just before destroy) events, to enable building trains for mods which need to track their carriage entities
     - Set last_user on the requester and provider chest ghosts that are built in the input/output positions next to a scaling station
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.3
-Date: 26. 6. 2018
+Date: 26. 06. 2018
   Bugfixes:
     - Fix crash when building modded locomotives that don't take any fuel
   Info:
     - Update localized names to be consistent with base game
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.2
-Date: 26. 6. 2018
+Date: 26. 06. 2018
   Bugfixes:
     - Fix bug in tracking entities across station renames
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.1
-Date: 25. 6. 2018
+Date: 25. 06. 2018
   Bugfixes:
     - Fix mistaken template check applied to deconstruction jobs
 ---------------------------------------------------------------------------------------------------
 Version: 0.16.0
-Date: 25. 6. 2018
+Date: 25. 06. 2018
   Info:
     - Initial release

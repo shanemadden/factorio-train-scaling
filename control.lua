@@ -127,50 +127,61 @@ local function train_eq(train_a, train_b)
     for i, record in ipairs(train_a_records) do
       if record.station == train_b_records[i].station then
         local train_b_conditions = train_b_records[i].wait_conditions
-        if #train_b_conditions ~= #record.wait_conditions then
-          return false
-        end
-        for j, condition in ipairs(record.wait_conditions) do
-          if condition.type ~= train_b_conditions[j].type then
+        if train_b_conditions then
+          -- non-empty, verify the other is also
+          if not record.wait_conditions then
             return false
           end
-          if condition.compare_type ~= train_b_conditions[j].compare_type then
+          if #train_b_conditions ~= #record.wait_conditions then
             return false
           end
-          if condition.ticks and condition.ticks ~= train_b_conditions[j].ticks then
-            return false
-          end
-          if condition.condition then
-            local condition_a = condition.condition
-            local condition_b = train_b_conditions[j].condition
-            if condition_a.comparator and condition_a.comparator ~= condition_b.comparator then
+          for j, condition in ipairs(record.wait_conditions) do
+            if condition.type ~= train_b_conditions[j].type then
               return false
             end
-            if condition_a.constant and condition_a.constant ~= condition_b.constant then
+            if condition.compare_type ~= train_b_conditions[j].compare_type then
               return false
             end
-            if condition_a.first_signal then
-              if not condition_b.first_signal then
+            if condition.ticks and condition.ticks ~= train_b_conditions[j].ticks then
+              return false
+            end
+            if condition.condition then
+              local condition_a = condition.condition
+              local condition_b = train_b_conditions[j].condition
+              if condition_a.comparator and condition_a.comparator ~= condition_b.comparator then
                 return false
               end
-              if condition_a.first_signal.type ~= condition_b.first_signal.type then
+              if condition_a.constant and condition_a.constant ~= condition_b.constant then
                 return false
               end
-              if condition_a.first_signal.name ~= condition_b.first_signal.name then
-                return false
+              if condition_a.first_signal then
+                if not condition_b.first_signal then
+                  return false
+                end
+                if condition_a.first_signal.type ~= condition_b.first_signal.type then
+                  return false
+                end
+                if condition_a.first_signal.name ~= condition_b.first_signal.name then
+                  return false
+                end
+              end
+              if condition_a.second_signal then
+                if not condition_b.second_signal then
+                  return false
+                end
+                if condition_a.second_signal.type ~= condition_b.second_signal.type then
+                  return false
+                end
+                if condition_a.second_signal.name ~= condition_b.second_signal.name then
+                  return false
+                end
               end
             end
-            if condition_a.second_signal then
-              if not condition_b.second_signal then
-                return false
-              end
-              if condition_a.second_signal.type ~= condition_b.second_signal.type then
-                return false
-              end
-              if condition_a.second_signal.name ~= condition_b.second_signal.name then
-                return false
-              end
-            end
+          end
+        else
+          -- empty schedule, verify the other is too
+          if record.wait_conditions then
+            return false
           end
         end
       else
@@ -1373,8 +1384,13 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
                 local fuel_inventory = builder_loco.get_inventory(defines.inventory.fuel)
                 local burner = builder_loco.burner
                 if global.scaling_burner_state[station_entity.unit_number] then
-                  burner.currently_burning = global.scaling_burner_state[station_entity.unit_number].currently_burning
-                  burner.remaining_burning_fuel = global.scaling_burner_state[station_entity.unit_number].remaining_burning_fuel
+                  local currently_burning = global.scaling_burner_state[station_entity.unit_number].currently_burning
+                  if currently_burning and currently_burning.valid and currently_burning.fuel_category then
+                    game.print(serpent.block(currently_burning.name))
+                    game.print(serpent.block(currently_burning.fuel_value))
+                    burner.currently_burning = currently_burning
+                    burner.remaining_burning_fuel = global.scaling_burner_state[station_entity.unit_number].remaining_burning_fuel
+                  end
                   for name, count in pairs(global.scaling_burner_state[station_entity.unit_number].inventory_contents) do
                     fuel_inventory.insert({
                       name = name,
@@ -1700,13 +1716,16 @@ local function on_train_changed_state(event)
       local fuel_inventory = builder_loco.get_inventory(defines.inventory.fuel)
       local burner = builder_loco.burner
       if global.scaling_burner_state[station_entity.unit_number] then
-        burner.currently_burning = global.scaling_burner_state[station_entity.unit_number].currently_burning
-        burner.remaining_burning_fuel = global.scaling_burner_state[station_entity.unit_number].remaining_burning_fuel
-        for name, count in pairs(global.scaling_burner_state[station_entity.unit_number].inventory_contents) do
-          fuel_inventory.insert({
-            name = name,
-            count = count,
-          })
+        local currently_burning = global.scaling_burner_state[station_entity.unit_number].currently_burning
+        if currently_burning and currently_burning.valid and currently_burning.fuel_category then
+          burner.currently_burning = currently_burning
+          burner.remaining_burning_fuel = global.scaling_burner_state[station_entity.unit_number].remaining_burning_fuel
+          for name, count in pairs(global.scaling_burner_state[station_entity.unit_number].inventory_contents) do
+            fuel_inventory.insert({
+              name = name,
+              count = count,
+            })
+          end
         end
       end
       local x_chest, y_chest = rotate_relative_position[station_entity.direction](1.5, 0.5)
