@@ -1386,8 +1386,6 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
                 if global.scaling_burner_state[station_entity.unit_number] then
                   local currently_burning = global.scaling_burner_state[station_entity.unit_number].currently_burning
                   if currently_burning and currently_burning.valid and currently_burning.fuel_category then
-                    game.print(serpent.block(currently_burning.name))
-                    game.print(serpent.block(currently_burning.fuel_value))
                     burner.currently_burning = currently_burning
                     burner.remaining_burning_fuel = global.scaling_burner_state[station_entity.unit_number].remaining_burning_fuel
                   end
