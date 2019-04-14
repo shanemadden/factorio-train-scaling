@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.17.3
+Date: 13. 04. 2019
+  Bugfixes:
+    - Fix crash when aborting a build for a station that's had scaling disabled
+    - Fix crash checking for fuel inventory during build abort
+---------------------------------------------------------------------------------------------------
 Version: 0.17.2
 Date: 08. 04. 2019
   Bugfixes:

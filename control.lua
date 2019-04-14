@@ -670,15 +670,17 @@ local function abort_remove_carriage(carriage_config, inventory)
   if inventory and inventory.valid then
     -- fuel
     local fuel_inventory = entity.get_inventory(defines.inventory.fuel)
-    for item_name, item_count in pairs(fuel_inventory.get_contents()) do
-      inventory.insert({
-        name = item_name,
-        count = item_count,
-      })
-      fuel_inventory.remove({
-        name = item_name,
-        count = item_count,
-      })
+    if fuel_inventory then
+      for item_name, item_count in pairs(fuel_inventory.get_contents()) do
+        inventory.insert({
+          name = item_name,
+          count = item_count,
+        })
+        fuel_inventory.remove({
+          name = item_name,
+          count = item_count,
+        })
+      end
     end
 
     -- grid
@@ -735,10 +737,12 @@ local function abort_build(train_config)
   -- clear from queue
   global.scaling_build_queue[train_config.builder_station_unit_number] = nil
   local station_config = global.enabled_stations[train_config.surface_index][train_config.force_name][train_config.enabled_station_name]
-  if station_config.running_builds and station_config.running_builds > 0 then
-    station_config.running_builds = station_config.running_builds - 1
-  else
-    station_config.running_builds = 0
+  if station_config then
+    if station_config.running_builds and station_config.running_builds > 0 then
+      station_config.running_builds = station_config.running_builds - 1
+    else
+      station_config.running_builds = 0
+    end
   end
   -- unregister if there's no other pending builds
   if not next(global.scaling_build_queue) then
