@@ -2592,7 +2592,7 @@ end
 local function on_gui_opened(event)
   if event.entity and event.entity.type == "train-stop" then
     local player = game.players[event.player_index]
-    if player.permission_group.allows_action(defines.input_action.change_train_wait_condition) then
+    if player.permission_group and player.permission_group.allows_action(defines.input_action.change_train_wait_condition) then
       if not global.open_entity then
         global.open_entity = {}
       end
