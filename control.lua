@@ -63,11 +63,11 @@ local function carriage_eq(carriage_a, carriage_b)
   local inventory_b = carriage_b.get_inventory(defines.inventory.cargo_wagon)
   -- inventory barring and filtering
   if inventory_a then
-    if inventory_a.hasbar() then
-      if not inventory_b.hasbar() or inventory_a.getbar() ~= inventory_b.getbar() then
+    if inventory_a.supports_bar() then
+      if not inventory_b.supports_bar() or inventory_a.get_bar() ~= inventory_b.get_bar() then
         return false
       end
-    elseif inventory_b.hasbar() then
+    elseif inventory_b.supports_bar() then
       return false
     end
     if inventory_a.supports_filters() and inventory_a.is_filtered() then
@@ -495,8 +495,8 @@ local carriage_to_table = {
       entity = carriage,
     }
     local inventory = carriage.get_inventory(defines.inventory.cargo_wagon)
-    if inventory.hasbar() then
-      t.bar = inventory.getbar()
+    if inventory.supports_bar() then
+      t.bar = inventory.get_bar()
     end
     if inventory.supports_filters() and inventory.is_filtered() then
       t.filter = {}
@@ -563,7 +563,7 @@ local try_place_wagon = {
         return wagon
       end
       if carriage_config.bar then
-        inventory.setbar(carriage_config.bar)
+        inventory.set_bar(carriage_config.bar)
       end
       if carriage_config.filter then
         for slot, filter in pairs(carriage_config.filter) do
