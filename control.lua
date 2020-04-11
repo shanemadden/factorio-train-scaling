@@ -993,7 +993,7 @@ local function building_tick(event)
               train_config.progress_tick = event.tick
               
               -- notify other mods which might need to track when their train cars get built
-              script.raise_event(defines.events.script_raised_built, {created_entity = wagon})
+              script.raise_event(defines.events.script_raised_built, {entity = wagon})
 
               if carriage_config.entity and carriage_config.entity.valid and train_config.builder_station.last_user then
                 -- artificially raise a paste event - we've copied everything but the schedule (which we don't want yet)
