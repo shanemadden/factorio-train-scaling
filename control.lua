@@ -999,11 +999,7 @@ local function building_tick(event)
                 -- artificially raise a paste event - we've copied everything but the schedule (which we don't want yet)
                 -- so allow any mods that have more stuff to do in reaction to a paste on their entities to do that work as if this was a proper paste
                 -- (if this messes up your mod, let me know - the other option here is to use a custom event for mods that wish to subscribe)
-                script.raise_event(defines.events.on_entity_settings_pasted, {
-                  player_index = train_config.builder_station.last_user.index,
-                  source = carriage_config.entity,
-                  destination = wagon,
-                })
+                wagon.copy_settings(carriage_config.entity, train_config.builder_station.last_user)
               end
               
               -- move to the next car
