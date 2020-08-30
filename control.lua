@@ -885,7 +885,7 @@ local function building_tick(event)
         if wagon and wagon.valid then
           wagon.surface.play_sound({
             position = wagon.position,
-            path = 'utility/build_big',
+            path = 'utility/build_large',
             volume_modifier = 0.9,
           })
           -- wagon landed, make sure things look good
@@ -1420,7 +1420,7 @@ local function try_build(surface_id, force_id, station_name, station_config, sca
 
                 surface.play_sound({
                   position = train_position,
-                  path = 'utility/build_big',
+                  path = 'utility/build_large',
                   volume_modifier = 0.9,
                 })
 
@@ -1779,7 +1779,7 @@ local function on_train_changed_state(event)
 
       surface.play_sound({
         position = builder_loco.position,
-        path = 'utility/build_big',
+        path = 'utility/build_large',
         volume_modifier = 0.9,
       })
 
