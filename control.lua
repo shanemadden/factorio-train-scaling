@@ -46,15 +46,15 @@ local opposite = {
 
 -- comparison funtion to determine if two carriages are configured the same for all attributes we care to compare
 local function carriage_eq(carriage_a, carriage_b)
-  -- compare color
-  if carriage_a.color or carriage_b.color then
-    if not carriage_a.color or not carriage_b.color then
-      return false
-    end
-    if carriage_a.color.r ~= carriage_a.color.r or carriage_a.color.g ~= carriage_a.color.g or carriage_a.color.b ~= carriage_a.color.b or carriage_a.color.a ~= carriage_a.color.a then
-      return false
-    end
-  end
+  -- compare color - disabled due to https://github.com/shanemadden/factorio-train-scaling/issues/5
+  -- if carriage_a.color or carriage_b.color then
+  --   if not carriage_a.color or not carriage_b.color then
+  --     return false
+  --   end
+  --   if carriage_a.color.r ~= carriage_a.color.r or carriage_a.color.g ~= carriage_a.color.g or carriage_a.color.b ~= carriage_a.color.b or carriage_a.color.a ~= carriage_a.color.a then
+  --     return false
+  --   end
+  -- end
   -- same entity
   if carriage_a.name ~= carriage_b.name then
     return false

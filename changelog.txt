@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.18.3
+Date: 26. 07. 2020
+  Changes:
+    - Stop considering carriages to not match if only their color differs in order to reduce conflicts with mods that manage train color
+---------------------------------------------------------------------------------------------------
 Version: 0.18.2
 Date: 10. 07. 2020
   Changes:
