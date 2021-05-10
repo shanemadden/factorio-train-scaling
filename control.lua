@@ -2019,7 +2019,7 @@ local function construction_check(event)
                           signal_map[signal_name] = signal_table.signal.type
                         end
                         local behavior = circuit_connection.target_entity.get_or_create_control_behavior()
-                        local parameters = behavior.parameters.parameters
+                        local parameters = behavior.parameters
                         for parameter_index, parameter in ipairs(parameters) do
 
                           if parameter.signal.name and signal_map[parameter.signal.name] == parameter.signal.type then
