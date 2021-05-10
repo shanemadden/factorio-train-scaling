@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.1
+Date: 09. 05. 2021
+  Bugfixes:
+    - Fix crashes due to text field data types, thanks to Roang-zero1 on GitHub
+    - Fix typo in combinator parameter updating, thanks to Roang-zero1 on GitHub
+---------------------------------------------------------------------------------------------------
 Version: 1.1.0
 Date: 13. 12. 2020
   Changes:
