@@ -2664,7 +2664,7 @@ local gui_change_handlers = {
       station_config.target = nil
     end
     entity.last_user = game.players[event.player_index]
-    event.element.parent.train_scaling_config_target_textbox.text = event.element.slider_value
+    event.element.parent.train_scaling_config_target_textbox.text = tostring(event.element.slider_value)
   end,
 
   train_scaling_config_target_textbox = function(event)
@@ -2681,7 +2681,7 @@ local gui_change_handlers = {
       end
       event.element.parent.train_scaling_config_target_slider.slider_value = tonumber(event.element.text)
     elseif not tonumber(event.element.text) and string.len(event.element.text) > 0 then
-      event.element.text = station_config.target or event.element.parent.train_scaling_config_target_slider.slider_value
+      event.element.text = station_config.target or tostring(event.element.parent.train_scaling_config_target_slider.slider_value)
     end
     entity.last_user = game.players[event.player_index]
   end,
